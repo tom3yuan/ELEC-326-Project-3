@@ -2,109 +2,192 @@
 
 /*
  * Module: processor
- * Description:
- *   Top-level integration of the 16-bit processor.
- *   This module instantiates and connects the program counter,
- *   instruction memory, decoder, register file, ALU, branch, and data memory.
+ * Description: The top module of this lab 
  */
+module processor (
+	input CLK_pi,
+	input CPU_RESET_pi
+); 
+ 
+	// Declare wires to interconnect the ports of the modules to implement the processor
+        wire [15:0] pc;
+        wire [15:0] instruction;
 
-module processor(
-    input  CLK_pi,
-    input  CPU_RESET_pi
-);
-    wire cpu_clk_en = 1'b1;
-    wire reset;
-    wire clock_enable;
+        wire [2:0] alu_func;
+        wire [2:0] rd;
+        wire [2:0] rs1;
+        wire [2:0] rs2;
+        wire [11:0] imm;
 
-    assign reset = CPU_RESET_pi;
-    assign clock_enable = cpu_clk_en;
+        wire arith2;
+        wire arith1;
+        wire movi_lo;
+        wire movi_hi;
+        wire addi;
+        wire subi;
+        wire ld;
+        wire st;
+        wire beq;
+        wire bge;
+        wire ble;
+        wire bc;
+        wire jump;
+        wire stc_cmd;
+        wire stb_cmd;
+        wire halt_cmd;
+        wire rst_cmd;
 
-    wire [15:0] pc_out;
-    wire [15:0] instr;
+        wire [15:0] reg1_data;
+        wire [15:0] reg2_data;
+        wire [15:0] regD_data;
+        wire carry_flag;
+        wire borrow_flag;
 
-    wire [2:0]  rs_addr;
-    wire [2:0]  rt_addr;
-    wire [2:0]  rd_addr;
-    wire        reg_write_en;
-    wire        mem_write_en;
-    wire        mem_read_en;
-    wire [3:0]  alu_op;
+        wire [15:0] alu_result;
+        wire alu_carry;
+        wire alu_borrow;
 
-    wire [15:0] reg_rs_data;
-    wire [15:0] reg_rt_data;
+        wire is_branch_taken;
 
-    wire [15:0] alu_result;
-    wire        zero_flag;
+        wire [15:0] data_out;
 
-    wire        branch_taken;
-    wire [15:0] branch_target;
 
-    wire [15:0] mem_read_data;
+	wire       cpu_clk_en = 1'b1; // Used to slow down CLK in FPGA implementation
+	wire       reset, clock_enable;
+   	// Write an "assign" statement for the "reset" signal
+        assign reset = CPU_RESET_pi | rst_cmd; 
+	// Write an "assign" statement for the  "clock_enable" signal
+        assign clock_enable = cpu_clk_en & ~halt_cmd;
+   
+   
+   
+	// Add the input-output ports of each module instantiated below
+   
+	decoder myDecoder(
+                .instruction_pi(instruction),
 
-    wire [15:0] writeback_data;
+                .alu_func_po(alu_func),
+                .destination_reg_po(rd),
+                .source_reg1_po(rs1),
+                .source_reg2_po(rs2),
 
-    assign writeback_data = (mem_read_en) ? mem_read_data : alu_result;
+                .immediate_po(imm),
 
-    program_counter myProgramCounter(
-        .CLK_pi(CLK_pi),
-        .RESET_pi(reset),
-        .clock_enable_pi(clock_enable),
-        .branch_taken_pi(branch_taken),
-        .branch_target_pi(branch_target),
-        .pc_po(pc_out)
-    );
+                .arith_2op_po(arith2),
+                .arith_1op_po(arith1),
 
-    instruction_mem myInstructionMem(
-        .addr_pi(pc_out),
-        .instruction_po(instr)
-    );
+                .movi_lower_po(movi_lo),
+                .movi_higher_po(movi_hi),
 
-    decoder myDecoder(
-        .instruction_pi(instr),
-        .rs_addr_po(rs_addr),
-        .rt_addr_po(rt_addr),
-        .rd_addr_po(rd_addr),
-        .alu_op_po(alu_op),
-        .reg_write_en_po(reg_write_en),
-        .mem_write_en_po(mem_write_en),
-        .mem_read_en_po(mem_read_en)
-    );
+                .addi_po(addi),
+                .subi_po(subi),
 
-    regfile myRegfile(
-        .CLK_pi(CLK_pi),
-        .RESET_pi(reset),
-        .WE_pi(reg_write_en),
-        .rs_pi(rs_addr),
-        .rt_pi(rt_addr),
-        .rd_pi(rd_addr),
-        .wd_pi(writeback_data),
-        .rs_data_po(reg_rs_data),
-        .rt_data_po(reg_rt_data)
-    );
+                .load_po(ld),
+                .store_po(st),
 
-    alu myALU(
-        .in1_pi(reg_rs_data),
-        .in2_pi(reg_rt_data),
-        .alu_op_pi(alu_op),
-        .result_po(alu_result),
-        .zero_po(zero_flag)
-    );
-	
-    branch myBranch(
-        .pc_in_pi(pc_out),
-        .immediate_pi(instr[7:0]),
-        .zero_pi(zero_flag),
-        .branch_taken_po(branch_taken),
-        .branch_target_po(branch_target)
-    );
+                .branch_eq_po(beq),
+                .branch_ge_po(bge),
+                .branch_le_po(ble),
+                .branch_carry_po(bc),
 
-    data_mem myDataMem(
-        .CLK_pi(CLK_pi),
-        .addr_pi(alu_result),
-        .write_data_pi(reg_rt_data),
-        .mem_write_en_pi(mem_write_en),
-        .mem_read_en_pi(mem_read_en),
-        .read_data_po(mem_read_data)
-    );
+                .jump_po(jump),
 
-endmodule
+                .stc_cmd_po(stc_cmd),
+                .stb_cmd_po(stb_cmd),
+                .halt_cmd_po(halt_cmd),
+                .rst_cmd_po(rst_cmd)
+	); 
+
+	alu  myALU(
+                .arith_1op_pi(arith1),
+                .arith_2op_pi(arith2),
+                .alu_func_pi(alu_func),
+                .addi_pi(addi),
+                .subi_pi(subi),
+                .load_or_store_pi(ld | st),
+                .reg1_data_pi(reg1_data),
+                .reg2_data_pi(reg2_data),
+                .immediate_pi(imm[5:0]),
+                .stc_cmd_pi(stc_cmd),
+                .stb_cmd_pi(stb_cmd),
+                .carry_in_pi(carry_flag),
+                .borrow_in_pi(borrow_flag),
+
+                .alu_result_po(alu_result),
+                .carry_out_po(alu_carry),
+                .borrow_out_po(alu_borrow)
+	);
+
+	branch  myBranch( 
+                .branch_eq_pi(beq),
+                .branch_ge_pi(bge),
+                .branch_le_pi(ble),
+                .branch_carry_pi(bc),
+                .reg1_data_pi(reg1_data),
+                .reg2_data_pi(reg2_data),
+                .alu_carry_bit_pi(alu_carry),
+                .is_branch_taken_po(is_branch_taken)
+	);
+
+	regfile   myRegfile(
+                .clk_pi(CLK_pi),
+                .clk_en_pi(clock_enable),
+                .reset_pi(reset),
+
+                .source_reg1_pi(rs1),
+                .source_reg2_pi(rs2),
+
+                .destination_reg_pi(rd),
+                .dest_result_data_pi((ld) ? data_out : alu_result),
+                .wr_destination_reg_pi(arith1 | arith2 | addi | subi | ld),
+
+                .movi_lower_pi(movi_lo),
+                .movi_higher_pi(movi_hi),
+                .immediate_pi(imm[7:0]),
+
+                .new_carry_pi(alu_carry),
+                .new_borrow_pi(alu_borrow),
+
+                .reg1_data_po(reg1_data),
+                .reg2_data_po(reg2_data),
+
+                .current_carry_po(carry_flag),
+                .current_borrow_po(borrow_flag),
+
+                .regD_data_po(regD_data)
+	);
+
+	program_counter myProgram_counter(
+                .clk_pi(CLK_pi),
+                .clk_en_pi(clock_enable),
+                .reset_pi(reset),
+
+                .branch_taken_pi(is_branch_taken),
+                .branch_immediate_pi(imm[5:0]),
+                .jump_taken_pi(jump),
+                .jump_immediate_pi(imm[11:0]),
+
+                .pc_po(pc)
+	);
+
+				  
+	instruction_mem myInstruction_mem(
+                .pc_pi(pc),
+                .instruction_po(instruction)
+	);
+
+	data_mem  myData_mem(
+                .clk_pi(CLK_pi),
+                .clk_en_pi(clock_enable),
+                .reset_pi(reset),
+
+                .write_pi(st),
+                .wdata_pi(regD_data),
+                .addr_pi(alu_result),
+
+                .rdata_po(data_out)
+	);
+
+endmodule 
+
+
