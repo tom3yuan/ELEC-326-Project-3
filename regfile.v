@@ -96,16 +96,7 @@ always @(posedge clk_pi) begin
         else if (wr_destination_reg_pi)
             REG_FILE[destination_reg_pi] <= dest_result_data_pi;
     end
-end
-   
-
-always @(posedge clk_pi) begin
-    #1;
-    $display("REG_FILE::\tTime: %3d+\tCARRY Flag: %1b\tBORROW Flag: %1b",
-        $time-1, CARRY_FLAG, BORROW_FLAG);
-    for (i = 0; i < NUM_REG; i = i + 1)
-        $display("REG_FILE[%1d]: %x", i, REG_FILE[i]);
-end
+end 
 
 
 endmodule
