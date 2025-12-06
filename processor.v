@@ -1,18 +1,4 @@
-
-
-
 `timescale 1ns/1ns
-
-/*
- * Module: processor
- * Description: Top-level processor module for FPGA Lab 3
- *
- * NOTE:
- * - This is your Project 3 processor with the *minimum required*
- *   FPGA Lab 3 updates.
- * - All new FPGA-specific lines are marked with:
- *       // CHANGED: explanation
- */
 
 module processor (
     input        CLK,
@@ -29,14 +15,8 @@ module processor (
 
     wire cpu_clk_en;
 
-    //---------------------------------------------
-    // CPU RESET (BTN[0])
-    //---------------------------------------------
-    wire CPU_RESET_pi = BTN[0];     // CHANGED: BTN[0] is CPU reset input
+    wire CPU_RESET_pi = BTN[0];
 
-    //---------------------------------------------
-    // Project 3 internal wiring (UNCHANGED)
-    //---------------------------------------------
     wire [15:0] pc;
     wire [15:0] instruction;
 
@@ -78,25 +58,15 @@ module processor (
 
     wire [15:0] data_out;
 
+    wire reset        = CPU_RESET_pi | rst_cmd;     
+    wire clock_enable = cpu_clk_en & ~halt_cmd;  
 
-    //---------------------------------------------
-    // Reset + Clock Enable (updated for FPGA)
-    //---------------------------------------------
-    wire reset        = CPU_RESET_pi | rst_cmd;     // CHANGED: use BTN reset
-    wire clock_enable = cpu_clk_en & ~halt_cmd;     // CHANGED: use real clk_en
-
-    //---------------------------------------------
-    // CHANGED: Clock Divider (from display_clkdiv / clock.v)
-    //---------------------------------------------
-    display_clkdiv #(.SIZE(12)) cpu_clock_div (     // CHANGED: create slow CPU clock
+   
+    display_clkdiv #(.SIZE(12)) cpu_clock_div (
         .clk_pi(CLK),
         .clk_en_po(cpu_clk_en)
     );
 
-
-    //---------------------------------------------
-    // Decoder (UNCHANGED)
-    //---------------------------------------------
     decoder myDecoder(
         .instruction_pi(instruction),
 
@@ -132,9 +102,6 @@ module processor (
         .rst_cmd_po(rst_cmd)
     ); 
 
-    //---------------------------------------------
-    // ALU (UNCHANGED)
-    //---------------------------------------------
     alu myALU(
         .arith_1op_pi(arith1),
         .arith_2op_pi(arith2),
@@ -155,9 +122,6 @@ module processor (
         .borrow_out_po(alu_borrow)
     );
 
-    //---------------------------------------------
-    // Branch Comparator (UNCHANGED)
-    //---------------------------------------------
     branch myBranch( 
         .branch_eq_pi(beq),
         .branch_ge_pi(bge),
@@ -169,9 +133,6 @@ module processor (
         .is_branch_taken_po(is_branch_taken)
     );
 
-    //---------------------------------------------
-    // Register File (UNCHANGED)
-    //---------------------------------------------
     regfile   myRegfile(
         .clk_pi(CLK),
         .clk_en_pi(clock_enable),
@@ -200,9 +161,6 @@ module processor (
         .regD_data_po(regD_data)
     );
 
-    //---------------------------------------------
-    // Program Counter (UNCHANGED)
-    //---------------------------------------------
     program_counter myProgram_counter(
         .clk_pi(CLK),
         .clk_en_pi(clock_enable),
@@ -216,18 +174,12 @@ module processor (
         .pc_po(pc)
     );
 
-    //---------------------------------------------
-    // Instruction Memory (UNCHANGED)
-    //---------------------------------------------
     instruction_mem myInstruction_mem(
         .pc_pi(pc),
         .instruction_po(instruction)
     );
 
-    //---------------------------------------------
-    // Data Memory (UPDATED FOR FPGA DISPLAY)
-    //---------------------------------------------
-    wire [15:0] display_num; // CHANGED: output from data_mem to display
+    wire [15:0] display_num; 
 
     data_mem myData_mem(
         .clk_pi(CLK),
@@ -239,20 +191,17 @@ module processor (
         .addr_pi(alu_result),
 
         .rdata_po(data_out),
-        .display_num_po(display_num)   // CHANGED: connect display output
+        .display_num_po(display_num)  
     );
 
-    //---------------------------------------------
-    // Seven-Segment Display (NEW FOR FPGA)
-    //---------------------------------------------
-    wire display_clk_en;     // CHANGED: display refresh clock
+    wire display_clk_en; 
 
-    display_clkdiv displayClockDivider (   // CHANGED
+    display_clkdiv displayClockDivider ( 
         .clk_pi(CLK),
         .clk_en_po(display_clk_en)
     );
 
-    sevenSegDisplay myDisplay (            // CHANGED: instantiate 7-seg formatter
+    sevenSegDisplay myDisplay ( 
         .clk_pi(CLK),
         .clk_en_pi(display_clk_en),
         .num_pi(display_num),
